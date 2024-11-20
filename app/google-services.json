@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "588190315866",
+    "firebase_url": "https://pat-3484c-default-rtdb.firebaseio.com",
+    "project_id": "pat-3484c",
+    "storage_bucket": "pat-3484c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:588190315866:android:d3317933bf16474027ef63",
+        "android_client_info": {
+          "package_name": "com.example.luistobar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCs_qEcwmN0rtFQf6jKAr-yyD7DUu7GMw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
