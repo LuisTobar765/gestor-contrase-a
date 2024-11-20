@@ -1,23 +1,32 @@
 package Model;
 
-public class passApp {
+public class passApps {
+    private String id;
     private String appName;
     private String email;
-    private String id;
-    private String notas;
+    private String userName;
     private String password;
     private String userEmail;
+    private String notas;
 
-    public passApp(String appName, String email, String id, String notas, String password, String userEmail) {
+    public void passApp() {}
+
+    public void passApp(String id, String appName, String email, String userName, String password, String userEmail, String notas) {
+        this.id = id;
         this.appName = appName;
         this.email = email;
-        this.id = id;
-        this.notas = notas;
+        this.userName = userName;
         this.password = password;
         this.userEmail = userEmail;
+        this.notas = notas;
     }
 
-    public passApp() {
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getAppName() {
@@ -36,20 +45,12 @@ public class passApp {
         this.email = email;
     }
 
-    public String getId() {
-        return id;
+    public String getUserName() {
+        return userName;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getNotas() {
-        return notas;
-    }
-
-    public void setNotas(String notas) {
-        this.notas = notas;
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 
     public String getPassword() {
@@ -68,15 +69,11 @@ public class passApp {
         this.userEmail = userEmail;
     }
 
-    @Override
-    public String toString() {
-        return "passApp{" +
-                "appName='" + appName + '\'' +
-                ", email='" + email + '\'' +
-                ", id='" + id + '\'' +
-                ", notas='" + notas + '\'' +
-                ", password='" + password + '\'' +
-                ", userEmail='" + userEmail + '\'' +
-                '}';
+    public String getNotas() {
+        return notas;
+    }
+
+    public void setNotas(String notas) {
+        this.notas = notas;
     }
 }

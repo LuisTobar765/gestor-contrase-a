@@ -1,6 +1,7 @@
 package UI;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.Toast;
@@ -16,7 +17,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
-import java.util.HashMap;
+import Model.User;
 
 public class Registro extends AppCompatActivity {
     private TextInputEditText etUsername, etEmail, etPassword, etConfirmPassword;
@@ -73,6 +74,8 @@ public class Registro extends AppCompatActivity {
                         FirebaseUser firebaseUser = auth.getCurrentUser();
                         if (firebaseUser != null) {
                             saveUserToDatabase(firebaseUser.getUid(), username, email);
+                            Intent intent = new Intent(Registro.this, Login.class);
+                             startActivity(intent);
                         }
                     } else {
                         // Error al crear usuario
@@ -83,16 +86,13 @@ public class Registro extends AppCompatActivity {
 
     private void saveUserToDatabase(String userId, String username, String email) {
         // Referencia a la base de datos
-        databaseReference = FirebaseDatabase.getInstance().getReference("users");
+        databaseReference = FirebaseDatabase.getInstance().getReference("user");
 
-        // Crear un mapa de datos del usuario
-        HashMap<String, String> userMap = new HashMap<>();
-        userMap.put("id", userId);
-        userMap.put("username", username);
-        userMap.put("email", email);
+        // Crea una instancia de User con los datos
+        User user = new User(email, username);
 
-        // Guardar datos en la base de datos
-        databaseReference.child(userId).setValue(userMap)
+        // Guarda los datos en la base de datos
+        databaseReference.child(userId).setValue(user)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         Toast.makeText(this, "Usuario registrado exitosamente", Toast.LENGTH_SHORT).show();
