@@ -1,7 +1,9 @@
 package UI;
 
+import android.app.KeyguardManager;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -11,11 +13,14 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.luistobar.R;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -24,78 +29,97 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import Model.passApps;
 
 public class Home extends AppCompatActivity {
 
     private RecyclerView recyclerView;
-    private Button btnAddCard;
-    private FirebaseAuth mAuth;
-    private DatabaseReference databaseReference;
-    private ArrayList<passApps> cardList;
     private CardAdapter cardAdapter;
+    private ArrayList<passApps> cardList;
+
+    private FirebaseAuth firebaseAuth;
+    private DatabaseReference databaseReference;
+    private String userEmail;
+
+    // Clave de cifrado (debe ser de 16 caracteres)
+    private static final String ENCRYPTION_KEY = "1234567890123456";
+
+    private Executor executor;
+    private passApps currentEditingCard;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.home);
 
-        // Inicializar Firebase
-        mAuth = FirebaseAuth.getInstance();
-        databaseReference = FirebaseDatabase.getInstance().getReference("passApps");
-
-        // Inicializar vistas
         recyclerView = findViewById(R.id.recyclerView);
-        btnAddCard = findViewById(R.id.btnAddCard);
-
-        // Configurar RecyclerView
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        firebaseAuth = FirebaseAuth.getInstance();
+        FirebaseUser currentUser = firebaseAuth.getCurrentUser();
+
+        if (currentUser != null) {
+            userEmail = currentUser.getEmail();
+        } else {
+            Toast.makeText(this, "Usuario no autenticado", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        databaseReference = FirebaseDatabase.getInstance().getReference("passApps");
         cardList = new ArrayList<>();
         cardAdapter = new CardAdapter(cardList, this);
         recyclerView.setAdapter(cardAdapter);
 
-        // Cargar tarjetas del usuario logado al iniciar
-        loadUserCards();
+        loadCards(); // Cargar las tarjetas desde Firebase
 
-        // Acción del botón para agregar tarjeta
-        btnAddCard.setOnClickListener(v -> showAddCardPopup());
-    }
+        executor = Executors.newSingleThreadExecutor();
 
-    private void loadUserCards() {
-        String currentUserEmail = mAuth.getCurrentUser() != null ? mAuth.getCurrentUser().getEmail() : null;
+        // Botón para agregar nuevas contraseñas
+        Button btnAddPassword = findViewById(R.id.btnAddCard);
+        btnAddPassword.setOnClickListener(v -> showAddPasswordPopup());
 
-        if (currentUserEmail == null) {
-            Toast.makeText(this, "Usuario no autenticado", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        Button btnLogout = findViewById(R.id.btnLogout);
 
-        databaseReference.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                cardList.clear(); // Limpiar lista antes de agregar nuevas tarjetas
-                for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
-                    passApps card = dataSnapshot.getValue(passApps.class);
-                    if (card != null && card.getUserEmail().equals(currentUserEmail)) {
-                        // Agregar la tarjeta solo si pertenece al usuario autenticado
-                        cardList.add(card);
-                    }
-                }
-                cardAdapter.notifyDataSetChanged();
-                if (cardList.isEmpty()) {
-                    Toast.makeText(Home.this, "No se encontraron tarjetas para este usuario", Toast.LENGTH_SHORT).show();
-                }
-            }
+        btnLogout.setOnClickListener(v -> {
+            // Cerrar sesión
+            FirebaseAuth.getInstance().signOut();
 
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-                Log.e("FirebaseError", "Error al cargar datos: " + error.getMessage());
-                Toast.makeText(Home.this, "Error al cargar datos", Toast.LENGTH_SHORT).show();
-            }
+            // Redirigir al usuario a la pantalla de inicio de sesión
+            Intent intent = new Intent(Home.this, Login.class);
+            startActivity(intent);
+            finish(); // Finalizar la actividad actual para evitar que el usuario regrese a la pantalla principal con el botón de atrás
         });
     }
 
-    private void showAddCardPopup() {
+    // Método para cargar las tarjetas desde Firebase
+    private void loadCards() {
+        databaseReference.orderByChild("userEmail").equalTo(userEmail)
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        cardList.clear(); // Limpiar la lista antes de agregar nuevos datos
+                        for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                            passApps card = snapshot.getValue(passApps.class);
+                            if (card != null) {
+                                cardList.add(card);
+                            }
+                        }
+                        cardAdapter.notifyDataSetChanged(); // Notificar al adaptador sobre los cambios
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        Toast.makeText(Home.this, "Error al cargar datos: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    // Mostrar el cuadro de diálogo para agregar una nueva tarjeta
+    private void showAddPasswordPopup() {
         AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
         View popupView = LayoutInflater.from(this).inflate(R.layout.popup_add_card, null);
         dialogBuilder.setView(popupView);
@@ -103,52 +127,178 @@ public class Home extends AppCompatActivity {
         AlertDialog dialog = dialogBuilder.create();
         dialog.show();
 
-        // Referencias a los campos
         EditText etAppName = popupView.findViewById(R.id.etAppName);
         EditText etEmail = popupView.findViewById(R.id.etEmail);
         EditText etUserName = popupView.findViewById(R.id.etUserName);
         EditText etPassword = popupView.findViewById(R.id.etPassword);
         EditText etNotas = popupView.findViewById(R.id.etNotas);
-        Button btnSaveCard = popupView.findViewById(R.id.btnSaveCard);
+        Button btnSave = popupView.findViewById(R.id.btnSaveCard);
+        Button btnCancel = popupView.findViewById(R.id.btnCancel);
 
-        // Acción del botón Guardar
-        btnSaveCard.setOnClickListener(v -> {
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        btnSave.setOnClickListener(v -> {
             String appName = etAppName.getText().toString().trim();
             String email = etEmail.getText().toString().trim();
             String userName = etUserName.getText().toString().trim();
             String password = etPassword.getText().toString().trim();
             String notas = etNotas.getText().toString().trim();
-            String userEmail = mAuth.getCurrentUser() != null ? mAuth.getCurrentUser().getEmail() : null;
 
-            // Validar campos obligatorios
-            if (appName.isEmpty() || email.isEmpty() || userName.isEmpty() || password.isEmpty() || userEmail == null) {
-                Toast.makeText(this, "Por favor llena todos los campos obligatorios", Toast.LENGTH_SHORT).show();
+            if (appName.isEmpty() || email.isEmpty() || userName.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Por favor llena todos los campos", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             try {
-                // Generar un ID único para la tarjeta
-                String Id = UUID.randomUUID().toString();
+                String encryptedPassword = EncryptionUtil.encrypt(password, ENCRYPTION_KEY);
+                String id = UUID.randomUUID().toString();
+                passApps newCard = new passApps(id, appName, email, userName, encryptedPassword, notas, userEmail);
 
-                // Crear objeto passApps
-                passApps newCard = new passApps(Id, appName, email, userName, password, notas, userEmail);
-
-                // Guardar en Firebase
-                databaseReference.child(Id).setValue(newCard)
-                        .addOnCompleteListener(task -> {
-                            if (task.isSuccessful()) {
-                                Toast.makeText(this, "Tarjeta guardada correctamente", Toast.LENGTH_SHORT).show();
-                                dialog.dismiss();
-
-                                // Recargar las tarjetas del usuario actual
-                                loadUserCards();
-                            } else {
-                                Log.e("FirebaseError", "Error al guardar la tarjeta: " + task.getException());
-                                Toast.makeText(this, "Error al guardar la tarjeta", Toast.LENGTH_SHORT).show();
-                            }
-                        });
+                databaseReference.child(id).setValue(newCard).addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Toast.makeText(this, "Tarjeta agregada correctamente", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    } else {
+                        Toast.makeText(this, "Error al guardar la tarjeta", Toast.LENGTH_SHORT).show();
+                    }
+                });
             } catch (Exception e) {
-                Toast.makeText(this, "Error al procesar la tarjeta: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                e.printStackTrace();
+                Toast.makeText(this, "Error al cifrar la contraseña", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // Mostrar el cuadro de edición (requiere autenticación)
+    public void showEditCardPopup(passApps card) {
+        if (isBiometricSupported()) {
+            currentEditingCard = card;
+            promptBiometricAuthentication();
+        } else {
+            currentEditingCard = card;
+            promptKeyguardAuthentication();
+        }
+    }
+
+    private boolean isBiometricSupported() {
+        BiometricManager biometricManager = BiometricManager.from(this);
+        return biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) == BiometricManager.BIOMETRIC_SUCCESS;
+    }
+
+    private void promptBiometricAuthentication() {
+        BiometricPrompt biometricPrompt = new BiometricPrompt(this, executor, new BiometricPrompt.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                super.onAuthenticationSucceeded(result);
+                showEditCardPopupAfterAuth(currentEditingCard);
+            }
+
+            @Override
+            public void onAuthenticationFailed() {
+                super.onAuthenticationFailed();
+                Toast.makeText(Home.this, "Autenticación fallida", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                super.onAuthenticationError(errorCode, errString);
+                Toast.makeText(Home.this, "Error de autenticación: " + errString, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle("Autenticación requerida")
+                .setSubtitle("Autentícate para editar esta tarjeta")
+                .setNegativeButtonText("Cancelar")
+                .build();
+
+        biometricPrompt.authenticate(promptInfo);
+    }
+
+    private void promptKeyguardAuthentication() {
+        KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+        if (keyguardManager.isKeyguardSecure()) {
+            Intent intent = keyguardManager.createConfirmDeviceCredentialIntent(
+                    "Autenticación requerida", "Autentícate para editar esta tarjeta"
+            );
+            startActivityForResult(intent, 1);
+        } else {
+            Toast.makeText(this, "Configura un método de desbloqueo seguro", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1 && resultCode == RESULT_OK) {
+            showEditCardPopupAfterAuth(currentEditingCard);
+        } else {
+            Toast.makeText(this, "Autenticación fallida", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showEditCardPopupAfterAuth(passApps card) {
+        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(this);
+        View popupView = LayoutInflater.from(this).inflate(R.layout.popup_edit_card, null);
+        dialogBuilder.setView(popupView);
+
+        AlertDialog dialog = dialogBuilder.create();
+        dialog.show();
+
+        EditText etAppName = popupView.findViewById(R.id.etAppName);
+        EditText etEmail = popupView.findViewById(R.id.etEmail);
+        EditText etUserName = popupView.findViewById(R.id.etUserName);
+        EditText etPassword = popupView.findViewById(R.id.etPassword);
+        EditText etNotas = popupView.findViewById(R.id.etNotas);
+        Button btnSaveChanges = popupView.findViewById(R.id.btnSaveCard);
+        Button btnCancel = popupView.findViewById(R.id.btnCancel);
+
+        etAppName.setText(card.getAppName());
+        etEmail.setText(card.getEmail());
+        etUserName.setText(card.getUserName());
+
+        try {
+            etPassword.setText(EncryptionUtil.decrypt(card.getPassword(), ENCRYPTION_KEY));
+        } catch (Exception e) {
+            etPassword.setText("Error al descifrar");
+        }
+
+        etNotas.setText(card.getNotas());
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        btnSaveChanges.setOnClickListener(v -> {
+            String appName = etAppName.getText().toString().trim();
+            String email = etEmail.getText().toString().trim();
+            String userName = etUserName.getText().toString().trim();
+            String password = etPassword.getText().toString().trim();
+            String notas = etNotas.getText().toString().trim();
+
+            if (appName.isEmpty() || email.isEmpty() || userName.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Por favor llena todos los campos", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            try {
+                String encryptedPassword = EncryptionUtil.encrypt(password, ENCRYPTION_KEY);
+
+                card.setAppName(appName);
+                card.setEmail(email);
+                card.setUserName(userName);
+                card.setPassword(encryptedPassword);
+                card.setNotas(notas);
+
+                databaseReference.child(card.getId()).setValue(card).addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Toast.makeText(this, "Tarjeta actualizada correctamente", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    } else {
+                        Toast.makeText(this, "Error al actualizar la tarjeta", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Error al cifrar la contraseña", Toast.LENGTH_SHORT).show();
             }
         });
     }
