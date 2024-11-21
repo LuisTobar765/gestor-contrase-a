@@ -1,12 +1,14 @@
 package UI;
 
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -20,8 +22,11 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+
 import java.util.ArrayList;
-import Model.passApp;
+import java.util.UUID;
+
+import Model.passApps;
 
 public class Home extends AppCompatActivity {
 
@@ -29,13 +34,13 @@ public class Home extends AppCompatActivity {
     private Button btnAddCard;
     private FirebaseAuth mAuth;
     private DatabaseReference databaseReference;
-    private ArrayList<passApp> cardList;
+    private ArrayList<passApps> cardList;
     private CardAdapter cardAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView( R.layout.home);
+        setContentView(R.layout.home);
 
         // Inicializar Firebase
         mAuth = FirebaseAuth.getInstance();
@@ -51,21 +56,22 @@ public class Home extends AppCompatActivity {
         cardAdapter = new CardAdapter(cardList, this);
         recyclerView.setAdapter(cardAdapter);
 
-        // Cargar tarjetas
+        // Cargar tarjetas del usuario
         loadUserCards();
 
-        // Botón agregar tarjeta
+        // Acción del botón para agregar tarjeta
         btnAddCard.setOnClickListener(v -> showAddCardPopup());
     }
 
     private void loadUserCards() {
         String currentUserEmail = mAuth.getCurrentUser().getEmail();
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("passApps");
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 cardList.clear();
                 for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
-                    passApp card = dataSnapshot.getValue(passApp.class);
+                    passApps card = dataSnapshot.getValue(passApps.class);
                     if (card != null && card.getUserEmail().equals(currentUserEmail)) {
                         cardList.add(card);
                     }
@@ -96,46 +102,46 @@ public class Home extends AppCompatActivity {
         EditText etNotas = popupView.findViewById(R.id.etNotas);
         Button btnSaveCard = popupView.findViewById(R.id.btnSaveCard);
 
+        // Acción del botón Guardar
         btnSaveCard.setOnClickListener(v -> {
-            String appName = etAppName.getText().toString();
-            String email = etEmail.getText().toString();
-            String userName = etUserName.getText().toString();
-            String password = etPassword.getText().toString();
-            String notas = etNotas.getText().toString();
+            String appName = etAppName.getText().toString().trim();
+            String email = etEmail.getText().toString().trim();
+            String userName = etUserName.getText().toString().trim();
+            String password = etPassword.getText().toString().trim();
+            String notas = etNotas.getText().toString().trim();
             String userEmail = mAuth.getCurrentUser().getEmail();
 
+            // Validar campos obligatorios
             if (appName.isEmpty() || email.isEmpty() || userName.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Por favor llena todos los campos", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Por favor llena todos los campos obligatorios", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("passApps");
+            try {
+                // Cifrar la contraseña
+                String secretKey = "1234567890123456"; // Clave de 16 caracteres
+                String encryptedPassword = EncryptionUtil.encrypt(password, secretKey);
 
-// Escucha para leer los datos
-            databaseReference.addValueEventListener(new ValueEventListener() {
-                @Override
-                public void onDataChange(@NonNull DataSnapshot snapshot) {
-                    for (DataSnapshot dataSnapshot : snapshot.getChildren()) {
-                        // Intenta convertir el snapshot a un objeto passApp
-                        passApp passAppData = dataSnapshot.getValue(passApp.class);
+                // Generar un ID único para la tarjeta
+                String Id = UUID.randomUUID().toString();
 
-                        if (passAppData != null) {
-                            // Usa los datos de passApp
-                            Log.d("FirebaseData", "App Name: " + passAppData.getAppName());
-                            Log.d("FirebaseData", "Email: " + passAppData.getEmail());
-                            Log.d("FirebaseData", "Username: " + passAppData.getUserName());
-                        } else {
-                            Log.e("FirebaseData", "Los datos no coinciden con el modelo passApp.");
-                        }
-                    }
-                }
+                // Crear objeto passApps
+                passApps newCard = new passApps(Id, appName, email, userName, encryptedPassword, notas, userEmail);
 
-                @Override
-                public void onCancelled(@NonNull DatabaseError error) {
-                    Log.e("FirebaseError", "Error al leer datos: " + error.getMessage());
-                }
-            });
-
+                // Guardar en Firebase
+                databaseReference.child(Id).setValue(newCard)
+                        .addOnCompleteListener(task -> {
+                            if (task.isSuccessful()) {
+                                Toast.makeText(this, "Tarjeta guardada correctamente", Toast.LENGTH_SHORT).show();
+                                dialog.dismiss();
+                            } else {
+                                Log.e("FirebaseError", "Error al guardar la tarjeta: " + task.getException());
+                                Toast.makeText(this, "Error al guardar la tarjeta", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+            } catch (Exception e) {
+                Toast.makeText(this, "Error al cifrar la contraseña: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         });
     }
 }

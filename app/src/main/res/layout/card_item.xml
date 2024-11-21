@@ -38,13 +38,26 @@
             android:id="@+id/btnEdit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Editar" />
+            android:text="Editar"
+            android:backgroundTint="#FFD700"
+            android:textColor="#000000"
+            android:padding="2dp"
+            android:layout_marginTop="32dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_margin="16dp"/>
 
         <Button
             android:id="@+id/btnDelete"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Eliminar"
-            android:layout_marginStart="8dp" />
+            android:backgroundTint="#FFD700"
+            android:textColor="#000000"
+            android:padding="2dp"
+            android:layout_marginTop="32dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_margin="16dp"/>
     </LinearLayout>
 </LinearLayout>

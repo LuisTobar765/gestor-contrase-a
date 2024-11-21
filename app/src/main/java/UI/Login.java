@@ -35,6 +35,8 @@ public class Login extends AppCompatActivity {
         btnLogin = findViewById(R.id.btnLogin);
         btnRegister = findViewById(R.id.btnRegister);
 
+
+
         // Botón para redirigir al registro
         btnRegister.setOnClickListener(view -> {
             Intent intent = new Intent(Login.this, Registro.class);
@@ -73,7 +75,7 @@ public class Login extends AppCompatActivity {
                             Toast.makeText(Login.this, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show();
                             Intent intent = new Intent(Login.this, Home.class);
                             startActivity(intent);
-                            finish(); // Finalizar la actividad de login
+
                         }
                     } else {
                         // Error en el inicio de sesión

@@ -9,6 +9,9 @@ public class passApps {
     private String userEmail;
     private String notas;
 
+    public passApps(String id, String appName, String email, String userName, String encryptedPassword, String notas, String userEmail) {
+    }
+
     public void passApp() {}
 
     public void passApp(String id, String appName, String email, String userName, String password, String userEmail, String notas) {

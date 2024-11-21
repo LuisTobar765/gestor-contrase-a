@@ -17,6 +17,8 @@
         <activity android:name="UI.Login"/>
         <activity android:name="UI.Home"/>
 
+
+
         <activity
             android:name="Activities.MainActivity"
             android:exported="true">

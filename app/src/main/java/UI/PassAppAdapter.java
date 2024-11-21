@@ -17,14 +17,14 @@ import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
 
-import Model.passApp;
+import Model.passApps;
 
 public class PassAppAdapter extends RecyclerView.Adapter<PassAppAdapter.PassAppViewHolder> {
 
     private Context context;
-    private ArrayList<passApp> passAppList;
+    private ArrayList<passApps> passAppList;
 
-    public PassAppAdapter(Context context, ArrayList<passApp> passAppList) {
+    public PassAppAdapter(Context context, ArrayList<passApps> passAppList) {
         this.context = context;
         this.passAppList = passAppList;
     }
@@ -38,7 +38,7 @@ public class PassAppAdapter extends RecyclerView.Adapter<PassAppAdapter.PassAppV
 
     @Override
     public void onBindViewHolder(@NonNull PassAppViewHolder holder, int position) {
-        passApp card = passAppList.get(position);
+        passApps card = passAppList.get(position);
         holder.appName.setText(card.getAppName());
         holder.userName.setText(card.getEmail());
         holder.userEmail.setText(card.getUserEmail());

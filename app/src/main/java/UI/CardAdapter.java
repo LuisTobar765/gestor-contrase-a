@@ -14,15 +14,15 @@ import com.example.luistobar.R;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import java.util.ArrayList;
-import Model.passApp;
+import Model.passApps;
 
 public class CardAdapter extends RecyclerView.Adapter<CardAdapter.ViewHolder> {
 
-    private ArrayList<passApp> cardList;
+    private ArrayList<passApps> cardList;
     private Context context;
     private DatabaseReference databaseReference;
 
-    public CardAdapter(ArrayList<passApp> cardList, Context context) {
+    public CardAdapter(ArrayList<passApps> cardList, Context context) {
         this.cardList = cardList;
         this.context = context;
         this.databaseReference = FirebaseDatabase.getInstance().getReference("passApp");
@@ -37,7 +37,7 @@ public class CardAdapter extends RecyclerView.Adapter<CardAdapter.ViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        passApp card = cardList.get(position);
+        passApps card = cardList.get(position);
         holder.tvAppName.setText(card.getAppName());
         holder.tvUserName.setText(card.getUserName());
         holder.tvEmail.setText(card.getEmail());

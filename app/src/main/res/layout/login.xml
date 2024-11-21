@@ -36,7 +36,7 @@
             android:inputType="text"
             android:textColor="#FFD700"
             android:layout_marginTop="30dp"
-            android:textColorHint="@color/white"/>
+            android:textColorHint="#d0d3d4"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Password -->
@@ -49,10 +49,10 @@
             android:id="@+id/etPassword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="contraseña"
+            android:hint="Contraseña"
             android:inputType="textPassword"
             android:textColor="#FFD700"
-            android:textColorHint="@color/white"/>
+            android:textColorHint="#d0d3d4"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <!-- Login Button -->
